@@ -1,87 +1,60 @@
 package main;
 
-import java.awt.Dimension;
+import java.awt.*;
 import java.util.ArrayList;
-import java.awt.Color;
-
 import javax.swing.JPanel;
-
 import piece.Piece;
 
-public class GamePanel extends JPanel implements Runnable{
+public class GamePanel extends JPanel implements Runnable {
 	private static final long serialVersionUID = 1L;
-	public static final int WIDTH = 900;
-	public static final int HEIGHT = 720;
-	final int FPS = 60;
-	Thread gameThread;
-	Board board = new Board();
-	Mouse mouse = new Mouse();
+	public static final int WIDTH = 900, HEIGHT = 720, WHITE = 0, BLACK = 1;
+	private static final int FPS = 60;
+	private boolean gameOver = false;
+	private Thread gameThread;
+	private Board board = new Board();
+	private Mouse mouse = new Mouse();
 	public static Piece selectedPiece = null;
-	
-	public static final int WHITE = 0;
-	public static final int BLACK = 1;
-	int currentPlayer = WHITE;
-	
-	public static ArrayList<Piece> pieces = new ArrayList<Piece>();
-	public static ArrayList<Piece> states = new ArrayList<Piece>();
-//	public static ArrayList<Piece> simPieces = new ArrayList<Piece>();
-	
-	
+	private int currentPlayer = WHITE;
+	public static boolean promotion = false;
+	public static ArrayList<Piece> pieces = new ArrayList<>(), states = new ArrayList<>();
+	private final String[] promotionOptions = {"Queen", "Rook", "Bishop", "Knight"};
+
 	public GamePanel() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		setBackground(Color.BLACK);
-		
 		addMouseListener(mouse);
 		addMouseMotionListener(mouse);
-		init_Pieces();
+		initPieces();
 	}
-	
-	public void start() {
-		gameThread = new Thread(this);
-		gameThread.start();
-	}
-	
-	public void init_Pieces() {
+
+	private void initPieces() {
 		for (int i = 0; i < 8; i++) {
-			pieces.add(new piece.Pawn(i, 1, BLACK));
+			pieces.add(new piece.Pawn(i, 1, WHITE));
 			pieces.add(new piece.Pawn(i, 6, WHITE));
 		}
-
 		pieces.add(new piece.Rook(0, 0, BLACK));
 		pieces.add(new piece.Rook(7, 0, BLACK));
 		pieces.add(new piece.Rook(0, 7, WHITE));
 		pieces.add(new piece.Rook(7, 7, WHITE));
-
-//		pieces.add(new piece.Knight(1, 0, BLACK));
-//		pieces.add(new piece.Knight(6, 0, BLACK));
-//		pieces.add(new piece.Knight(1, 7, WHITE));
-//		pieces.add(new piece.Knight(6, 7, WHITE));
-//
-//		pieces.add(new piece.Bishop(2, 0, BLACK));
-//		pieces.add(new piece.Bishop(5, 0, BLACK));
-//		pieces.add(new piece.Bishop(2, 7, WHITE));
-//		pieces.add(new piece.Bishop(5, 7, WHITE));
-//
-//		pieces.add(new piece.Queen(3, 0, BLACK));
-//		pieces.add(new piece.Queen(3, 7, WHITE));
-
 		pieces.add(new piece.King(4, 0, BLACK));
 		pieces.add(new piece.King(4, 7, WHITE));
 	}
-	
+
+	public void start() {
+		gameThread = new Thread(this);
+		gameThread.start();
+	}
+
 	@Override
 	public void run() {
-		//Game Loop
-		double drawInterval = 1000000000 / FPS;
-		double delta = 0;
-		long now;
-		long lastTime = System.nanoTime();
-		
+		double drawInterval = 1000000000 / FPS, delta = 0;
+		long now, lastTime = System.nanoTime();
 		while (gameThread != null) {
+			if (gameOver) 
+                break;
 			now = System.nanoTime();
 			delta += (now - lastTime) / drawInterval;
 			lastTime = now;
-
 			if (delta >= 1) {
 				update();
 				repaint();
@@ -91,104 +64,198 @@ public class GamePanel extends JPanel implements Runnable{
 	}
 
 	public static Piece getPiece(int col, int row) {
-        for (Piece p : pieces) {
-            if (p.col == col && p.row == row && p != selectedPiece) {
-                return p;
-            }
-        }
-        return null;
+		for (Piece p : pieces) {
+			if (p.col == col && p.row == row && p != selectedPiece) {
+				return p;
+			}
+		}
+		return null;
 	}
 
-	public void update() {
-		if (mouse.pressed) {
+	private void update() {
+		if (promotion) {
+			handlePromotion();
+		} else if (mouse.pressed) {
 			if (selectedPiece == null) {
-				for (Piece p : pieces) {
-					if (p.color == currentPlayer && p.col == mouse.x / Board.SQUARE_SIZE && p.row == mouse.y / Board.SQUARE_SIZE) {
-						selectedPiece = p;
-						break;
-					}
-				}
+				selectPiece();
 			} else {
-				simulate();
+				simulateMove();
 			}
-		}     
-		else {
-            if (selectedPiece != null) {
-            	int checkMove = selectedPiece.checkMove(selectedPiece.getCol(), selectedPiece.getRow());
-				if (checkMove > 0) {
-					Piece target = null;
-					System.out.println("Moved " + checkMove);
-					if (checkMove == 2) {
-						target = getPiece(selectedPiece.getCol(), selectedPiece.getRow());
-						target.col = -1;
-						target.row = -1;
-						states.add(target.clone());
-						pieces.remove(target);
-					}
-					if (checkMove == 3) {
-						target = getPiece(selectedPiece.getCol(), selectedPiece.getRow() + (currentPlayer == WHITE ? 1: -1));
-						System.out.println(selectedPiece.getCol() + " " + (selectedPiece.getRow() + (currentPlayer == WHITE ? 1: -1)));
-						target.col = -1;
-						target.row = -1;
-						states.add(target.clone());
-						pieces.remove(target);
-					}
-					if (checkMove == 5 || checkMove == 7) {
-					    target = getPiece(0, selectedPiece.getRow());
-					    target.col = 3;
-						target.row = selectedPiece.getRow();
-						target.update_by_row_col();
-						states.add(target.clone());
-					} else if (checkMove == 6 || checkMove == 8) {
-					    target = getPiece(7, selectedPiece.getRow());
-					    target.col = 5;
-						target.row = selectedPiece.getRow();
-						target.update_by_row_col();
-						states.add(target.clone());
-					}
-
-					states.add(selectedPiece.clone());
-					for (Piece p : states) {
-						System.out.println(p + " " + p.col + " " + p.row + " " + p.prevCol + " " + p.prevRow);
-					}
-					if (target != null) {
-						System.out.println("Arr piece: ");
-						for (Piece p : pieces) {
-							System.out.println(p + " " + p.col + " " + p.row + " " + p.prevCol + " " + p.prevRow + " " + p.x + " " + p.y);
-						}
-					}
-					selectedPiece.update();
-					currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
-
-				} else {
-					selectedPiece.resetPosition();
-					System.out.println("Can't move " + checkMove);
-				}
-				selectedPiece = null;
-			}
-        }
+		} else if (selectedPiece != null) {
+			processMove();
+		}
 	}
-	
-	private void simulate() {
+
+	private void handlePromotion() {
+		Piece target = selectPromotion(selectedPiece.getCol(), selectedPiece.getRow(), selectedPiece.color);
+		if (target != null) {
+			applyPromotion(target);
+		}
+	}
+
+	private void applyPromotion(Piece target) {
+		target.update_by_row_col();
+		states.add(target.clone());
+		pieces.add(target);
+		pieces.remove(selectedPiece);
+		selectedPiece = null;
+		promotion = false;
+	}
+
+	private void selectPiece() {
+		for (Piece p : pieces) {
+			if (p.color == currentPlayer && p.col == mouse.x / Board.SQUARE_SIZE && p.row == mouse.y / Board.SQUARE_SIZE) {
+				selectedPiece = p;
+				break;
+			}
+		}
+	}
+
+	private void simulateMove() {
 		selectedPiece.x = mouse.x - Board.HALF_SQUARE_SIZE;
 		selectedPiece.y = mouse.y - Board.HALF_SQUARE_SIZE;
 		selectedPiece.col = selectedPiece.getCol();
 		selectedPiece.row = selectedPiece.getRow();
 	}
-	
-	public void paintComponent(java.awt.Graphics g) {
+
+	private void processMove() {
+		int moveType = selectedPiece.checkMove(selectedPiece.getCol(), selectedPiece.getRow());
+		if (moveType > 0) {
+			handleValidMove(moveType);
+			currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
+		} else {
+			selectedPiece.resetPosition();
+		}
+		if (!promotion) {
+			selectedPiece = null;
+		}
+	}
+
+	private void handleValidMove(int moveType) {
+		Piece target = null;
+		if (moveType == 2 || moveType == 3) {
+			target = getPieceForCapture(moveType);
+			if (target instanceof piece.King) {
+				System.out.println("Game Over");
+				gameOver = true;
+			}
+		} else if (moveType == 9 || moveType == 10) {
+			promotion = true;
+			handlePawnPromotion(moveType);
+		} else if (moveType == 5 || moveType == 7) {
+			performCastling(0, 3);
+		} else if (moveType == 6 || moveType == 8) {
+			performCastling(7, 5);
+		}
+		updateGameState(target);
+	}
+
+	private Piece getPieceForCapture(int moveType) {
+		Piece target = getPiece(selectedPiece.getCol(), selectedPiece.getRow());
+		if (moveType == 3) {
+			target = getPiece(selectedPiece.getCol(), selectedPiece.getRow() + (currentPlayer == WHITE ? 1 : -1));
+		}
+		if (target != null) {
+			target.col = -1;
+			target.row = -1;
+			states.add(target.clone());
+			pieces.remove(target);
+		}
+		return target;
+	}
+
+	private void handlePawnPromotion(int moveType) {
+		Piece target = (moveType == 10) ? getPiece(selectedPiece.getCol(), selectedPiece.getRow()) : null;
+		if (target != null) {
+			target.col = -1;
+			target.row = -1;
+			states.add(target.clone());
+			pieces.remove(target);
+			if (target instanceof piece.King) {
+				System.out.println("Game Over");
+				gameOver = true;
+			}
+		}
+	}
+
+	private void performCastling(int rookCol, int newRookCol) {
+		Piece rook = getPiece(rookCol, selectedPiece.getRow());
+		rook.col = newRookCol;
+		rook.update_by_row_col();
+		states.add(rook.clone());
+	}
+
+	private void updateGameState(Piece target) {
+		states.add(selectedPiece.clone());
+		selectedPiece.update();
+		for (Piece p : pieces) {
+			p.updateManageCell();
+		}
+//		for (Piece p : pieces) {
+//			System.out.println(p.getClass().getSimpleName() + " at " + p.col + ", " + p.row);
+//			for (Cell c : p.manageCell) {
+//				System.out.println(c.y + ", " + c.x);
+//			}
+//		}
+		
+	}
+
+	private Piece selectPromotion(int col, int row, int color) {
+		if (mouse.pressed) {
+			promotion = false;
+			int offsetY = 100;
+			for (String option : promotionOptions) {
+				if (mouse.x >= 800 && mouse.x <= 800 + Board.SQUARE_SIZE && mouse.y >= offsetY && mouse.y <= offsetY + Board.SQUARE_SIZE) {
+					return createPromotionPiece(option, col, row, color);
+				}
+				offsetY += 100;
+			}
+		}
+		return null;
+	}
+
+	private Piece createPromotionPiece(String option, int col, int row, int color) {
+		switch (option) {
+			case "Queen": return new piece.Queen(col, row, color);
+			case "Rook": return new piece.Rook(col, row, color);
+			case "Bishop": return new piece.Bishop(col, row, color);
+			case "Knight": return new piece.Knight(col, row, color);
+			default: return null;
+		}
+	}
+
+	@Override
+	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		board.draw(g);
-		
 		for (Piece p : pieces) {
 			p.draw(g);
 		}
-		
+		highlightSelectedPiece(g);
+		drawPromotionOptions(g);
+	}
+
+	private void highlightSelectedPiece(Graphics g) {
 		if (selectedPiece != null) {
 			g.setColor(new Color(0, 0, 255, 100));
 			g.fillRect(selectedPiece.col * Board.SQUARE_SIZE, selectedPiece.row * Board.SQUARE_SIZE, Board.SQUARE_SIZE, Board.SQUARE_SIZE);
 			selectedPiece.draw(g);
 		}
-		
 	}
+
+	private void drawPromotionOptions(Graphics g) {
+		if (promotion && !gameOver) {
+			int offsetY = 100;
+			for (String option : promotionOptions) {
+				Piece p = createPromotionPiece(option, -1, -1, currentPlayer);
+				if (p != null) {
+					p.x = 800;
+					p.y = offsetY;
+					p.draw(g);
+				}
+				offsetY += 100;
+			}
+		}
+	}
+
 }

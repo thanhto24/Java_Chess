@@ -3,16 +3,19 @@ package piece;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.Vector;
+
 
 import main.Board;
 import main.GamePanel;
+import main.Cell;
 
 public class Piece implements Cloneable{
 	public BufferedImage image;
 	public int x, y;
 	public int col, row, prevCol, prevRow;
 	public int color;
-	
+	public Vector<Cell> manageCell = new Vector<Cell>();
 	public Piece(int col, int row, int color) {
 		this.x = col * Board.SQUARE_SIZE;
 		this.y = row * Board.SQUARE_SIZE;
@@ -48,6 +51,18 @@ public class Piece implements Cloneable{
 		return (y + Board.HALF_SQUARE_SIZE) / Board.SQUARE_SIZE;
 	}
 	
+	public void updateManageCell() {
+		manageCell.clear();
+		for (int r = 0; r < Board.NUM_ROW; r++) {
+			for (int c = 0; c < Board.NUM_COL; c++) {
+				int check = checkMove(c, r);
+				if (check > 0) {
+					manageCell.add(new Cell(c, r));
+				}
+			}
+		}
+	}
+	
 	public void update() {
 		prevCol = col;
 		prevRow = row;
@@ -79,10 +94,12 @@ public class Piece implements Cloneable{
             return -2;
 		}
 		Piece target = GamePanel.getPiece(targetCol, targetRow);
-		System.out.println(target);
+//		System.out.println(target);
 		if (target != null && target.color == color) {
 			return -3;
 		}
+		if (GamePanel.promotion)
+			return -4;
 		return 0;
 	}
 	
