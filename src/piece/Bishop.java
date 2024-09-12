@@ -36,4 +36,12 @@ public class Bishop extends Piece{
     	}
     	return 0;
     }
+    @Override
+	public char getSymbol() {
+		if (color == GamePanel.WHITE) {
+			return 'B';
+		} else {
+			return 'b';
+		}
+	}
 }

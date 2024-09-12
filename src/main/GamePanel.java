@@ -1,9 +1,11 @@
 package main;
 
 import java.awt.*;
+import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.JPanel;
 import piece.Piece;
+import stockfish.*;
 
 public class GamePanel extends JPanel implements Runnable {
 	private static final long serialVersionUID = 1L;
@@ -19,23 +21,41 @@ public class GamePanel extends JPanel implements Runnable {
 	public static ArrayList<Piece> pieces = new ArrayList<>(), states = new ArrayList<>();
 	private final String[] promotionOptions = {"Queen", "Rook", "Bishop", "Knight"};
 
+	private Stockfish stockfish_module; // Khai báo biến Stockfish
+
+	
 	public GamePanel() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		setBackground(Color.BLACK);
 		addMouseListener(mouse);
 		addMouseMotionListener(mouse);
 		initPieces();
+		 try {
+            stockfish_module = new Stockfish("res/stockfish/stockfish-windows-x86-64-avx2.exe"); // Khởi tạo Stockfish trong phương thức khởi tạo
+         } catch (IOException e) {
+            e.printStackTrace(); // Xử lý lỗi khi không thể khởi tạo Stockfish
+         }
 	}
 
 	private void initPieces() {
 		for (int i = 0; i < 8; i++) {
-			pieces.add(new piece.Pawn(i, 1, WHITE));
+			pieces.add(new piece.Pawn(i, 1, BLACK));
 			pieces.add(new piece.Pawn(i, 6, WHITE));
 		}
 		pieces.add(new piece.Rook(0, 0, BLACK));
 		pieces.add(new piece.Rook(7, 0, BLACK));
 		pieces.add(new piece.Rook(0, 7, WHITE));
 		pieces.add(new piece.Rook(7, 7, WHITE));
+		pieces.add(new piece.Knight(1, 0, BLACK));
+		pieces.add(new piece.Knight(6, 0, BLACK));
+		pieces.add(new piece.Knight(1, 7, WHITE));
+		pieces.add(new piece.Knight(6, 7, WHITE));
+		pieces.add(new piece.Bishop(2, 0, BLACK));
+		pieces.add(new piece.Bishop(5, 0, BLACK));
+		pieces.add(new piece.Bishop(2, 7, WHITE));
+		pieces.add(new piece.Bishop(5, 7, WHITE));
+		pieces.add(new piece.Queen(3, 0, BLACK));
+		pieces.add(new piece.Queen(3, 7, WHITE));
 		pieces.add(new piece.King(4, 0, BLACK));
 		pieces.add(new piece.King(4, 7, WHITE));
 	}
@@ -120,6 +140,7 @@ public class GamePanel extends JPanel implements Runnable {
 
 	private void processMove() {
 		int moveType = selectedPiece.checkMove(selectedPiece.getCol(), selectedPiece.getRow());
+		System.out.println(moveType);
 		if (moveType > 0) {
 			handleValidMove(moveType);
 			currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
@@ -139,13 +160,23 @@ public class GamePanel extends JPanel implements Runnable {
 				System.out.println("Game Over");
 				gameOver = true;
 			}
-		} else if (moveType == 9 || moveType == 10) {
-			promotion = true;
-			handlePawnPromotion(moveType);
-		} else if (moveType == 5 || moveType == 7) {
-			performCastling(0, 3);
-		} else if (moveType == 6 || moveType == 8) {
-			performCastling(7, 5);
+			Fen_Gen.halfmoveClock = 0;
+		} 
+		else 
+		{
+			if (selectedPiece instanceof piece.Pawn) {
+				Fen_Gen.halfmoveClock = 0;
+			} else {
+				Fen_Gen.halfmoveClock++;
+			}
+			if (moveType == 9 || moveType == 10) {
+				promotion = true;
+				handlePawnPromotion(moveType);
+			} else if (moveType == 5 || moveType == 7) {
+				performCastling(0, 3);
+			} else if (moveType == 6 || moveType == 8) {
+				performCastling(7, 5);
+			}
 		}
 		updateGameState(target);
 	}
@@ -184,12 +215,37 @@ public class GamePanel extends JPanel implements Runnable {
 		rook.update_by_row_col();
 		states.add(rook.clone());
 	}
-
+	
+	private char[][] create_board()
+	{
+		char[][] board = new char[8][8];
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				board[i][j] = '.';
+			}
+		}
+		for (Piece p : pieces) {
+            if (p.col != -1 && p.row != -1) {
+                board[p.row][p.col] = p.getSymbol();
+            }
+		}
+		return board;
+	}
+	
 	private void updateGameState(Piece target) {
 		states.add(selectedPiece.clone());
 		selectedPiece.update();
-		for (Piece p : pieces) {
-			p.updateManageCell();
+//		for (Piece p : pieces) {
+//			p.updateManageCell();
+//		}
+		String fen = stockfish.Fen_Gen.getFen(create_board(), currentPlayer, "");
+		System.out.println(fen);
+		try {
+			String bestMove = stockfish_module.getBestMove(fen);
+			System.out.println(bestMove);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 //		for (Piece p : pieces) {
 //			System.out.println(p.getClass().getSimpleName() + " at " + p.col + ", " + p.row);

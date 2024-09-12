@@ -18,4 +18,12 @@ public class Queen extends Piece{
 		Rook r = new Rook(prevCol, prevRow, color);
 		return Math.max(b.checkMove(targetCol, targetRow), r.checkMove(targetCol, targetRow));
 	}
+	@Override
+	public char getSymbol() {
+		if (color == GamePanel.WHITE) {
+			return 'Q';
+		} else {
+			return 'q';
+		}
+	}
 }

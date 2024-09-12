@@ -1,6 +1,7 @@
 package piece;
 
 import main.GamePanel;
+import stockfish.Fen_Gen;
 
 public class Rook extends Piece{
 	public boolean moved = false;
@@ -32,10 +33,29 @@ public class Rook extends Piece{
 					return 0;
 			}
 			moved = true;
+			if (color == GamePanel.WHITE) {
+				if (prevCol == 0)
+					Fen_Gen.whiteCanCastleQueenside = false;
+				if (prevCol == 7)
+					Fen_Gen.whiteCanCastleKingside = false;
+			} else {
+                if (prevCol == 0)
+                    Fen_Gen.blackCanCastleQueenside = false;
+                if (prevCol == 7)
+                    Fen_Gen.blackCanCastleKingside = false;
+			}
 			if (target == null)
 				return 1;
 			return 2;
 		}
 		return 0;
+	}
+	@Override
+	public char getSymbol() {
+		if (color == GamePanel.WHITE) {
+			return 'R';
+		} else {
+			return 'r';
+		}
 	}
 }
