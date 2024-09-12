@@ -20,9 +20,10 @@ public class GamePanel extends JPanel implements Runnable {
 	public static boolean promotion = false;
 	public static ArrayList<Piece> pieces = new ArrayList<>(), states = new ArrayList<>();
 	private final String[] promotionOptions = {"Queen", "Rook", "Bishop", "Knight"};
-
-	private Stockfish stockfish_module; // Khai báo biến Stockfish
-
+	private String fen = "";
+	private String bestMove = "";
+	private Stockfish stockfish_module;
+	
 	
 	public GamePanel() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -30,17 +31,26 @@ public class GamePanel extends JPanel implements Runnable {
 		addMouseListener(mouse);
 		addMouseMotionListener(mouse);
 		initPieces();
-		 try {
+		try {
             stockfish_module = new Stockfish("res/stockfish/stockfish-windows-x86-64-avx2.exe"); // Khởi tạo Stockfish trong phương thức khởi tạo
-         } catch (IOException e) {
-            e.printStackTrace(); // Xử lý lỗi khi không thể khởi tạo Stockfish
-         }
+        } catch (IOException e) {
+        	 e.printStackTrace(); // Xử lý lỗi khi không thể khởi tạo Stockfish
+        }
+		fen = stockfish.Fen_Gen.getFen(create_board(), (currentPlayer == WHITE) ? BLACK : WHITE, "");
+//		System.out.println(fen);
+		try {
+			bestMove = stockfish_module.getBestMove(fen);
+			System.out.println(bestMove);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private void initPieces() {
 		for (int i = 0; i < 8; i++) {
-			pieces.add(new piece.Pawn(i, 1, BLACK));
-			pieces.add(new piece.Pawn(i, 6, WHITE));
+//			pieces.add(new piece.Pawn(i, 1, BLACK));
+//			pieces.add(new piece.Pawn(i, 6, WHITE));
 		}
 		pieces.add(new piece.Rook(0, 0, BLACK));
 		pieces.add(new piece.Rook(7, 0, BLACK));
@@ -58,6 +68,11 @@ public class GamePanel extends JPanel implements Runnable {
 		pieces.add(new piece.Queen(3, 7, WHITE));
 		pieces.add(new piece.King(4, 0, BLACK));
 		pieces.add(new piece.King(4, 7, WHITE));
+		
+		pieces.add(new piece.Pawn(1, 1, WHITE));
+		pieces.add(new piece.Pawn(1, 6, BLACK));
+		pieces.add(new piece.Pawn(2, 6, BLACK));
+
 	}
 
 	public void start() {
@@ -120,6 +135,9 @@ public class GamePanel extends JPanel implements Runnable {
 		pieces.remove(selectedPiece);
 		selectedPiece = null;
 		promotion = false;
+		if (bestMove != null) {
+			auto_move(bestMove);
+		}
 	}
 
 	private void selectPiece() {
@@ -140,7 +158,7 @@ public class GamePanel extends JPanel implements Runnable {
 
 	private void processMove() {
 		int moveType = selectedPiece.checkMove(selectedPiece.getCol(), selectedPiece.getRow());
-		System.out.println(moveType);
+//		System.out.println(moveType);
 		if (moveType > 0) {
 			handleValidMove(moveType);
 			currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
@@ -235,25 +253,21 @@ public class GamePanel extends JPanel implements Runnable {
 	private void updateGameState(Piece target) {
 		states.add(selectedPiece.clone());
 		selectedPiece.update();
-//		for (Piece p : pieces) {
-//			p.updateManageCell();
-//		}
-		String fen = stockfish.Fen_Gen.getFen(create_board(), currentPlayer, "");
-		System.out.println(fen);
+
+		fen = stockfish.Fen_Gen.getFen(create_board(), currentPlayer, "");
+//		System.out.println(fen);
 		try {
-			String bestMove = stockfish_module.getBestMove(fen);
+			bestMove = stockfish_module.getBestMove(fen);
 			System.out.println(bestMove);
+			if(!promotion)
+			{
+				auto_move(bestMove);
+			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-//		for (Piece p : pieces) {
-//			System.out.println(p.getClass().getSimpleName() + " at " + p.col + ", " + p.row);
-//			for (Cell c : p.manageCell) {
-//				System.out.println(c.y + ", " + c.x);
-//			}
-//		}
-		
+
 	}
 
 	private Piece selectPromotion(int col, int row, int color) {
@@ -313,5 +327,75 @@ public class GamePanel extends JPanel implements Runnable {
 			}
 		}
 	}
+	
+	private void auto_move(String bestmove)
+	{
+		if(bestmove == "")
+			return;
+		if (bestmove == "No move found") {
+			gameOver = true;
+			return;
+		}
+//		System.out.println("Auto Move");
+		String[] moves = bestmove.split(" ");
+        int selected_col = moves[0].charAt(0) - 'a';
+        int selected_row = 8 - (moves[0].charAt(1) - '0');
+        int target_col = moves[0].charAt(2) - 'a';
+        int target_row = 8 - (moves[0].charAt(3) - '0');
+        selectedPiece = null;
+        selectedPiece = getPiece(selected_col, selected_row);
+//        System.out.println(selectedPiece);
+        selectedPiece.x = target_col * Board.SQUARE_SIZE;
+        selectedPiece.y = target_row * Board.SQUARE_SIZE;
+        selectedPiece.col = target_col;
+        selectedPiece.row = target_row;
+        selectedPiece.update();
+        Piece target = getPiece(target_col, target_row);
+		if (target != null) {
+			target.col = -1;
+			target.row = -1;
+			states.add(target.clone());
+			pieces.remove(target);
+		}
+		fen = stockfish.Fen_Gen.getFen(create_board(), (currentPlayer == WHITE) ? BLACK : WHITE, "");
+//		System.out.println(fen);
+		try {
+			String bestMove = stockfish_module.getBestMove(fen);
+			System.out.println(bestMove);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		bestMove = "";
+		if((moves[0]).length()==5)
+		{
+//			promotion = true;
+			Piece promotion_piece = null;
+			switch(moves[0].charAt(4))
+            {
+			case 'q':
+				promotion_piece = new piece.Queen(-1, -1, BLACK);
+				break;
+            case 'r':
+				promotion_piece = new piece.Rook(-1, -1, BLACK);
+				break;
+            case 'b':
+            	promotion_piece = new piece.Bishop(-1, -1, BLACK);
+            	break;
+        	case 'n':
+				promotion_piece = new piece.Knight(-1, -1, BLACK);
+				break;
+            }
+			if(promotion_piece != null)
+			{
+				promotion_piece.col = target_col;
+				promotion_piece.row = target_row;
+				applyPromotion(promotion_piece);
+			}
+		}
+//		System.out.println("Promotion");
+		selectedPiece = null;
+		currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
 
+	}
 }

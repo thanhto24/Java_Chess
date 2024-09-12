@@ -51,7 +51,9 @@ public class Stockfish {
         String line;
         while ((line = input.readLine()) != null) {
             if (line.startsWith("bestmove")) {
-                return line;
+                // Split the line and return only the move (second part)
+                String[] parts = line.split(" ");
+                return parts[1]; // bestmove move [ponder] - we only need the move
             }
         }
         return "No move found";

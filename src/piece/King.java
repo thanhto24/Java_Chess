@@ -16,7 +16,7 @@ public class King extends Piece{
 	
 	@Override
 	public int checkMove(int targetCol, int targetRow) {
-		System.out.println("King checkMove");
+//		System.out.println("King checkMove");
 		int primary_check = super.checkMove(targetCol, targetRow);
 		if (primary_check < 0)
 			return primary_check;
