@@ -1,1 +1,1 @@
-Download Stockfish at https://stockfishchess.org/, then move the "stockfish" folder to res
+Download Stockfish at https://stockfishchess.org/, then move the "stockfish" folder to "res" folder
