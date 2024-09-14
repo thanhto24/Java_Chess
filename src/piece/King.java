@@ -22,7 +22,8 @@ public class King extends Piece{
 			return primary_check;
 		Piece target = GamePanel.getPiece(targetCol, targetRow);
 		if (Math.abs(targetCol - prevCol) <= 1 && Math.abs(targetRow - prevRow) <= 1) {
-			moved = true;
+			if (color == GamePanel.currentPlayer)
+				moved = true;
 			if (color == GamePanel.WHITE) {
 				Fen_Gen.whiteCanCastleKingside = false;
 				Fen_Gen.whiteCanCastleQueenside = false;
@@ -41,7 +42,7 @@ public class King extends Piece{
 	    int emptyColEnd = (targetCol == 2) ? 3 : 6;
 	    int returnCode = (color == GamePanel.WHITE) ? (targetCol == 2 ? 5 : 6) : (targetCol == 2 ? 7 : 8);
 
-	    if (targetRow != 0 && targetRow != 7) return -1; // Invalid row for castling
+	    if (targetRow != prevRow) return -1; // Invalid row for castling
 
 	    Piece rook = GamePanel.getPiece(rookCol, targetRow);
 	    if (rook instanceof Rook && !((Rook) rook).moved) {
@@ -53,7 +54,8 @@ public class King extends Piece{
 	            }
 	        }
 	        if (pathClear) {
-	        	moved = true;
+				if (color == GamePanel.currentPlayer)
+					moved = true;
 				if (color == GamePanel.WHITE) {
 					Fen_Gen.whiteCanCastleKingside = false;
 					Fen_Gen.whiteCanCastleQueenside = false;

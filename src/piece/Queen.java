@@ -14,9 +14,43 @@ public class Queen extends Piece{
 	
 	@Override
 	public int checkMove(int targetCol, int targetRow) {
-		Bishop b = new Bishop(prevCol, prevRow, color);
-		Rook r = new Rook(prevCol, prevRow, color);
-		return Math.max(b.checkMove(targetCol, targetRow), r.checkMove(targetCol, targetRow));
+		int primary_check = super.checkMove(targetCol, targetRow);
+		if (primary_check < 0)
+			return primary_check;
+		Piece target = GamePanel.getPiece(targetCol, targetRow);
+		if (targetCol == prevCol || targetRow == prevRow) {
+			int stepX = targetCol == prevCol ? 0 : (targetCol - prevCol) > 0 ? 1 : -1;
+			int stepY = targetRow == prevRow ? 0 : (targetRow - prevRow) > 0 ? 1 : -1;
+			int tmpCol = prevCol;
+			int tmpRow = prevRow;
+			while (tmpCol != targetCol || tmpRow != targetRow) {
+				tmpCol += stepX;
+				tmpRow += stepY;
+				Piece obstacle = GamePanel.getPiece(tmpCol, tmpRow);
+				if (obstacle != null && obstacle != target)
+					return 0;
+			}
+			if (target == null)
+				return 1;
+			return 2;
+		}
+		if (Math.abs(targetCol - prevCol) == Math.abs(targetRow - prevRow)) {
+			int stepX = (targetCol - prevCol) > 0 ? 1 : -1;
+			int stepY = (targetRow - prevRow) > 0 ? 1 : -1;
+			int tmpCol = prevCol;
+			int tmpRow = prevRow;
+			while (tmpCol != targetCol && tmpRow != targetRow) {
+				tmpCol += stepX;
+				tmpRow += stepY;
+				Piece obstacle = GamePanel.getPiece(tmpCol, tmpRow);
+				if (obstacle != null && obstacle != target)
+					return 0;
+			}
+			if (target == null)
+				return 1;
+			return 2;
+		}
+		return 0;
 	}
 	@Override
 	public char getSymbol() {

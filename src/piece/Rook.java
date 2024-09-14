@@ -32,7 +32,8 @@ public class Rook extends Piece{
 				if (obstacle != null && obstacle != target)
 					return 0;
 			}
-			moved = true;
+			if (color == GamePanel.currentPlayer)
+				moved = true;
 			if (color == GamePanel.WHITE) {
 				if (prevCol == 0)
 					Fen_Gen.whiteCanCastleQueenside = false;

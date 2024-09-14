@@ -9,21 +9,21 @@ import stockfish.*;
 
 public class GamePanel extends JPanel implements Runnable {
 	private static final long serialVersionUID = 1L;
-	public static final int WIDTH = 900, HEIGHT = 720, WHITE = 0, BLACK = 1;
+	public static final int WIDTH = 1000, HEIGHT = 720, WHITE = 0, BLACK = 1;
 	private static final int FPS = 60;
-	private boolean gameOver = false;
+	public static boolean gameOver = false;
 	private Thread gameThread;
 	private Board board = new Board();
 	private Mouse mouse = new Mouse();
 	public static Piece selectedPiece = null;
-	private int currentPlayer = WHITE;
+	public static int currentPlayer = WHITE;
 	public static boolean promotion = false;
 	public static ArrayList<Piece> pieces = new ArrayList<>(), states = new ArrayList<>();
 	private final String[] promotionOptions = {"Queen", "Rook", "Bishop", "Knight"};
-	private String fen = "";
+	public static String fen = "";
+	public static Stockfish stockfish_module;
 	private String bestMove = "";
-	private Stockfish stockfish_module;
-	
+	boolean hint = false; 
 	
 	public GamePanel() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -32,7 +32,7 @@ public class GamePanel extends JPanel implements Runnable {
 		addMouseMotionListener(mouse);
 		initPieces();
 		try {
-            stockfish_module = new Stockfish("res/stockfish/stockfish-windows-x86-64-avx2.exe"); // Khởi tạo Stockfish trong phương thức khởi tạo
+            stockfish_module = new Stockfish("res/stockfish/stockfish-windows-x86-64-avx2.exe"); 
         } catch (IOException e) {
         	 e.printStackTrace(); // Xử lý lỗi khi không thể khởi tạo Stockfish
         }
@@ -40,7 +40,7 @@ public class GamePanel extends JPanel implements Runnable {
 //		System.out.println(fen);
 		try {
 			bestMove = stockfish_module.getBestMove(fen);
-			System.out.println(bestMove);
+//			System.out.println(bestMove);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -49,8 +49,8 @@ public class GamePanel extends JPanel implements Runnable {
 
 	private void initPieces() {
 		for (int i = 0; i < 8; i++) {
-//			pieces.add(new piece.Pawn(i, 1, BLACK));
-//			pieces.add(new piece.Pawn(i, 6, WHITE));
+			pieces.add(new piece.Pawn(i, 1, BLACK));
+			pieces.add(new piece.Pawn(i, 6, WHITE));
 		}
 		pieces.add(new piece.Rook(0, 0, BLACK));
 		pieces.add(new piece.Rook(7, 0, BLACK));
@@ -69,9 +69,9 @@ public class GamePanel extends JPanel implements Runnable {
 		pieces.add(new piece.King(4, 0, BLACK));
 		pieces.add(new piece.King(4, 7, WHITE));
 		
-		pieces.add(new piece.Pawn(1, 1, WHITE));
-		pieces.add(new piece.Pawn(1, 6, BLACK));
-		pieces.add(new piece.Pawn(2, 6, BLACK));
+//		pieces.add(new piece.Pawn(1, 1, WHITE));
+//		pieces.add(new piece.Pawn(1, 6, BLACK));
+//		pieces.add(new piece.Pawn(2, 6, BLACK));
 
 	}
 
@@ -96,6 +96,8 @@ public class GamePanel extends JPanel implements Runnable {
 				delta--;
 			}
 		}
+//		System.out.println("Game Over");
+//		System.out.println("Winner: " + (currentPlayer == WHITE ? "Black" : "White"));
 	}
 
 	public static Piece getPiece(int col, int row) {
@@ -108,6 +110,10 @@ public class GamePanel extends JPanel implements Runnable {
 	}
 
 	private void update() {
+		if (gameOver) {
+			return;
+		}
+		hintMove();
 		if (promotion) {
 			handlePromotion();
 		} else if (mouse.pressed) {
@@ -136,11 +142,15 @@ public class GamePanel extends JPanel implements Runnable {
 		selectedPiece = null;
 		promotion = false;
 		if (bestMove != null) {
+//			System.out.println(bestMove);
 			auto_move(bestMove);
 		}
 	}
 
 	private void selectPiece() {
+		if (gameOver) {
+			return;
+		}
 		for (Piece p : pieces) {
 			if (p.color == currentPlayer && p.col == mouse.x / Board.SQUARE_SIZE && p.row == mouse.y / Board.SQUARE_SIZE) {
 				selectedPiece = p;
@@ -157,11 +167,14 @@ public class GamePanel extends JPanel implements Runnable {
 	}
 
 	private void processMove() {
+		if (gameOver) {
+			return;
+		}
 		int moveType = selectedPiece.checkMove(selectedPiece.getCol(), selectedPiece.getRow());
 //		System.out.println(moveType);
 		if (moveType > 0) {
 			handleValidMove(moveType);
-			currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
+//			currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
 		} else {
 			selectedPiece.resetPosition();
 		}
@@ -175,7 +188,7 @@ public class GamePanel extends JPanel implements Runnable {
 		if (moveType == 2 || moveType == 3) {
 			target = getPieceForCapture(moveType);
 			if (target instanceof piece.King) {
-				System.out.println("Game Over");
+//				System.out.println("Game Over");
 				gameOver = true;
 			}
 			Fen_Gen.halfmoveClock = 0;
@@ -221,7 +234,7 @@ public class GamePanel extends JPanel implements Runnable {
 			states.add(target.clone());
 			pieces.remove(target);
 			if (target instanceof piece.King) {
-				System.out.println("Game Over");
+//				System.out.println("Game Over");
 				gameOver = true;
 			}
 		}
@@ -253,21 +266,22 @@ public class GamePanel extends JPanel implements Runnable {
 	private void updateGameState(Piece target) {
 		states.add(selectedPiece.clone());
 		selectedPiece.update();
-
+		hint = false;
 		fen = stockfish.Fen_Gen.getFen(create_board(), currentPlayer, "");
 //		System.out.println(fen);
 		try {
 			bestMove = stockfish_module.getBestMove(fen);
-			System.out.println(bestMove);
 			if(!promotion)
 			{
+//				System.out.println(bestMove);
 				auto_move(bestMove);
 			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		
+		currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;
 	}
 
 	private Piece selectPromotion(int col, int row, int color) {
@@ -297,12 +311,24 @@ public class GamePanel extends JPanel implements Runnable {
 	@Override
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
+
 		board.draw(g);
 		for (Piece p : pieces) {
 			p.draw(g);
 		}
+		
+		if (gameOver) {
+//			g.setColor(new Color(0, 0, 0, 100));
+//			g.fillRect(0, 0, WIDTH, HEIGHT);
+			g.setColor(Color.WHITE);
+			g.setFont(new Font("Arial", Font.BOLD, 30));
+			g.drawString("Game Over",  750, 300);
+			g.drawString("Winner: " + (currentPlayer == WHITE ? "Black" : "White"), 750, 450);
+			return;
+		}
 		highlightSelectedPiece(g);
 		drawPromotionOptions(g);
+		drawHintOption(g);
 	}
 
 	private void highlightSelectedPiece(Graphics g) {
@@ -328,11 +354,41 @@ public class GamePanel extends JPanel implements Runnable {
 		}
 	}
 	
+	private void drawHintOption(Graphics g) {
+		g.setColor(Color.BLACK);
+		g.fillRect(750, 600, 200, 50);
+		g.setColor(Color.GREEN);
+		g.setFont(new Font("Arial", Font.BOLD, 20));
+		g.drawString("Hint", 830, 635);
+		if (hint) {
+			g.setColor(Color.BLACK);
+			g.fillRect(750, 600, 200, 50);
+			g.setColor(Color.RED);
+			g.setFont(new Font("Arial", Font.BOLD, 20));
+			g.drawString(bestMove, 830, 635);
+		}
+	}
+	
+	private void hintMove() {
+		if(mouse.pressed)
+			if (mouse.x >= 750 && mouse.x <= 950 && mouse.y >= 600 && mouse.y <= 650) {
+//				System.out.println("Hint");
+				hint = true;
+				try {
+					bestMove = stockfish_module.getBestMove(fen);
+//					System.out.println(bestMove);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} 
+	}
+	
 	private void auto_move(String bestmove)
 	{
 		if(bestmove == "")
 			return;
-		if (bestmove == "No move found") {
+		if (bestmove == "No move found" || bestmove == "(none)") {
 			gameOver = true;
 			return;
 		}
@@ -356,15 +412,6 @@ public class GamePanel extends JPanel implements Runnable {
 			target.row = -1;
 			states.add(target.clone());
 			pieces.remove(target);
-		}
-		fen = stockfish.Fen_Gen.getFen(create_board(), (currentPlayer == WHITE) ? BLACK : WHITE, "");
-//		System.out.println(fen);
-		try {
-			String bestMove = stockfish_module.getBestMove(fen);
-			System.out.println(bestMove);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		bestMove = "";
 		if((moves[0]).length()==5)
@@ -393,6 +440,16 @@ public class GamePanel extends JPanel implements Runnable {
 				applyPromotion(promotion_piece);
 			}
 		}
+		fen = stockfish.Fen_Gen.getFen(create_board(), (currentPlayer == WHITE) ? BLACK : WHITE, "");
+//		System.out.println(fen);
+		try {
+			bestMove = stockfish_module.getBestMove(fen);
+//			System.out.println(bestMove);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		bestMove = "";
 //		System.out.println("Promotion");
 		selectedPiece = null;
 		currentPlayer = (currentPlayer == WHITE) ? BLACK : WHITE;

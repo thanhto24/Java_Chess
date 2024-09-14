@@ -1,8 +1,10 @@
 package piece;
 
 import javax.imageio.ImageIO;
+
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+//import java.util.List;
 import java.util.Vector;
 
 
@@ -87,6 +89,8 @@ public class Piece implements Cloneable{
     }
 	
 	public int checkMove(int targetCol, int targetRow) {
+//		System.out.println("Piece checkMove from " + col + " " + row + " to " + targetCol + " " + targetRow + " by " + getSymbol() + color + " not implemented yet.");
+		
 		if (targetCol < 0 || targetCol >= Board.NUM_COL || targetRow < 0 || targetRow >= Board.NUM_ROW) {
 			return -1;
 		}
@@ -100,7 +104,73 @@ public class Piece implements Cloneable{
 		}
 		if (GamePanel.promotion)
 			return -4;
+		
+		Piece temp = this.clone();
+		temp.col = targetCol;
+		temp.row = targetRow;
+		GamePanel.pieces.remove(this);
+		if (target != null) {
+			GamePanel.pieces.remove(target);
+		}
+		GamePanel.pieces.add(temp);
+		if (color == GamePanel.currentPlayer) {
+			if (KingInCheck(color)) {
+				GamePanel.pieces.add(this);
+				if (target != null) {
+					GamePanel.pieces.add(target);
+				}
+				GamePanel.pieces.remove(temp);
+				return -5;
+			}
+		}
+		GamePanel.pieces.add(this);
+		if (target != null) {
+			GamePanel.pieces.add(target);
+		}
+		GamePanel.pieces.remove(temp);
 		return 0;
+	}
+	
+	public boolean KingInCheck(int color)
+	{
+		Piece king = null;
+		if (GamePanel.selectedPiece != null && GamePanel.selectedPiece.color == color && GamePanel.selectedPiece instanceof King) {
+			king = GamePanel.selectedPiece;
+		}
+		else {
+		for (int r = 0; r < Board.NUM_ROW; r++) {
+			for (int c = 0; c < Board.NUM_COL; c++) {
+				Piece target = GamePanel.getPiece(c, r);
+				if (target != null && target.color == color) {
+					if (target instanceof King) {
+						king = target;
+						break;
+					}
+				}
+			}
+			if (king != null)
+				break;
+		}
+		}
+		if (king == null)
+		{
+			System.out.println("King not found");
+			return false;
+
+		}
+		for (int r = 0; r < Board.NUM_ROW; r++) {
+			for (int c = 0; c < Board.NUM_COL; c++) {
+				Piece target = GamePanel.getPiece(c, r);
+				if (target != null && target.color != color) {
+					int check = target.checkMove(king.col, king.row);
+					if (check > 0) {
+//						System.out.println("King " + color + " in check by " + target.getSymbol() + target.color + check);
+						return true;
+					}
+				}
+			}
+		}
+		return false;
 	}
 	
 	
